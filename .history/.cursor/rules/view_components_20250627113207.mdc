@@ -1,7 +1,6 @@
 ---
 description: This rule file establishes standards for ViewComponent usage in the Social Script project. It complements the main `.cursorrules` file with specific ViewComponent practices
 globs: 
-alwaysApply: false
 ---
 ---
 name: view_components
