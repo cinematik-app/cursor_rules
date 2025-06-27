@@ -1,0 +1,218 @@
+---
+name: rails_views_partials
+description: Standards for traditional Rails 7.2 views, templates, and partials usage
+version: 1.0.0
+author: Dan
+date: 2024-02-10
+globs: 
+  - app/views/**/*.erb
+  - app/views/**/*.html.erb
+  - app/views/**/*.js.erb
+tags:
+  - views
+  - partials
+  - erb
+  - rails
+  - templates
+---
+
+# Rails Views and Partials Standards
+
+## Overview
+
+This rule file establishes standards for using traditional Rails 7.2 views, templates, and partials. We explicitly choose NOT to use ViewComponent and instead leverage Rails' built-in partial system for component-like functionality.
+
+## Key Rules
+
+1. **Directory Structure**
+   - All views MUST be in `app/views/`
+   - Partials MUST be prefixed with underscore: `_partial_name.html.erb`
+   - Shared partials go in `app/views/shared/`
+   - Controller-specific partials go in `app/views/controller_name/`
+   - Layouts go in `app/views/layouts/`
+
+2. **Partial Organization**
+   ```
+   app/views/
+   ├── shared/
+   │   ├── _header.html.erb
+   │   ├── _footer.html.erb
+   │   └── _navigation.html.erb
+   ├── episodes/
+   │   ├── index.html.erb
+   │   ├── show.html.erb
+   │   ├── _episode_card.html.erb
+   │   └── _episode_list.html.erb
+   └── layouts/
+       └── application.html.erb
+   ```
+
+3. **Partial Naming Conventions**
+   - Use descriptive, action-oriented names
+   - Prefix with underscore for partials
+   - Use snake_case for all file names
+   - Examples:
+     - `_episode_card.html.erb`
+     - `_user_profile.html.erb`
+     - `_form_errors.html.erb`
+
+4. **Partial Structure**
+   ```erb
+   <%# app/views/shared/_episode_card.html.erb %>
+   <%# 
+     Renders a single episode card with metadata
+     
+     @param episode [Episode] The episode to display
+     @param show_actions [Boolean] Whether to show action buttons (default: true)
+   %>
+   <div class="episode-card">
+     <h3><%= episode.title %></h3>
+     <p><%= episode.description %></p>
+     <% if show_actions %>
+       <%= link_to "View", episode_path(episode), class: "btn btn-primary" %>
+     <% end %>
+   </div>
+   ```
+
+5. **Local Variables and Parameters**
+   - Use `local_assigns` for optional parameters
+   - Provide sensible defaults
+   - Document parameters in comments
+   ```erb
+   <%# Usage example %>
+   <%= render 'shared/episode_card', 
+              episode: @episode, 
+              show_actions: false %>
+   ```
+
+6. **Helper Methods**
+   - Create helper methods in `app/helpers/` for complex logic
+   - Keep view logic minimal
+   - Use presenters for complex data transformations
+   ```ruby
+   # app/helpers/episodes_helper.rb
+   module EpisodesHelper
+     def episode_duration(episode)
+       "#{episode.duration / 60}:#{episode.duration % 60}"
+     end
+   end
+   ```
+
+7. **Layout and Structure**
+   - Use `content_for` for dynamic content
+   - Leverage `yield` for flexible layouts
+   - Use `render` for including partials
+   ```erb
+   <%# app/views/layouts/application.html.erb %>
+   <!DOCTYPE html>
+   <html>
+     <head>
+       <title><%= content_for?(:title) ? yield(:title) : "Default Title" %></title>
+     </head>
+     <body>
+       <%= render 'shared/header' %>
+       <main>
+         <%= yield %>
+       </main>
+       <%= render 'shared/footer' %>
+     </body>
+   </html>
+   ```
+
+## Best Practices
+
+1. **Keep Partials Focused**
+   - One responsibility per partial
+   - Keep partials under 50 lines when possible
+   - Extract complex logic to helpers or presenters
+
+2. **Reusability**
+   - Design partials to be reusable across different contexts
+   - Use local variables for customization
+   - Avoid hardcoded values
+
+3. **Performance**
+   - Use `render partial: 'name', collection: @items` for collections
+   - Avoid N+1 queries in partials
+   - Use `cache` for expensive partials
+
+4. **Testing**
+   - Test partials through integration tests
+   - Use `render_views` in controller specs
+   - Test helper methods separately
+
+## Common Patterns
+
+### Collection Rendering
+```erb
+<%# Efficient collection rendering %>
+<%= render partial: 'episode_card', collection: @episodes, as: :episode %>
+```
+
+### Conditional Rendering
+```erb
+<%# Conditional partial rendering %>
+<% if @episode.has_transcript? %>
+  <%= render 'episodes/transcript', episode: @episode %>
+<% end %>
+```
+
+### Nested Partials
+```erb
+<%# app/views/episodes/_episode_list.html.erb %>
+<div class="episode-list">
+  <% episodes.each do |episode| %>
+    <%= render 'episodes/episode_card', episode: episode %>
+  <% end %>
+</div>
+```
+
+## Anti-Patterns to Avoid
+
+1. **❌ ViewComponent Usage**
+   - Do not create ViewComponent classes
+   - Do not use `app/components/` directory
+   - Stick to traditional partials
+
+2. **❌ Complex Logic in Views**
+   - Avoid complex calculations in ERB
+   - Move business logic to models or helpers
+   - Use presenters for complex view logic
+
+3. **❌ Large Partials**
+   - Avoid partials over 100 lines
+   - Break down complex partials into smaller ones
+   - Use composition over large monolithic partials
+
+4. **❌ Inline Styles and Scripts**
+   - Use CSS classes and external stylesheets
+   - Keep JavaScript in separate files
+   - Use `javascript_include_tag` and `stylesheet_link_tag`
+
+## Migration from ViewComponent
+
+If converting from ViewComponent:
+
+1. Extract component logic to helpers
+2. Convert component templates to partials
+3. Update render calls to use `render partial:`
+4. Move any component-specific CSS to stylesheets
+5. Update tests to use integration tests
+
+## References
+
+- Rails Guide: Layouts and Rendering
+- Rails Guide: Action View Overview
+- Rails Guide: Partial Templates
+
+## Enforcement
+
+The AI assistant should:
+
+1. Encourage use of traditional partials over ViewComponent
+2. Ensure proper partial naming and organization
+3. Validate helper usage for complex logic
+4. Check for proper local variable usage
+5. Verify directory structure follows Rails conventions
+6. Promote reusable, focused partials
+7. Avoid ViewComponent-specific patterns 
