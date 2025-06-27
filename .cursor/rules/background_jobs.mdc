@@ -1,0 +1,228 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+name: background_jobs
+description: Standards for background job processing in Rails 7.2
+version: 1.0.0
+author: Dan
+date: 2025-06-27
+globs: 
+  - app/jobs/**/*_job.rb
+  - config/sidekiq.yml
+  - config/application.rb
+tags:
+  - background_jobs
+  - sidekiq
+  - active_job
+  - rails_7_2
+---
+
+# Background Job Processing Standards for Rails 7.2
+
+## Overview
+
+This rule file establishes standards for background job processing in Rails 7.2 using Sidekiq and Active Job. It complements the main Rails rules with specific background job practices.
+
+## Key Rules
+
+1. **Job Structure**
+   ```ruby
+   # app/jobs/my_job.rb
+   class MyJob < ApplicationJob
+     queue_as :default
+     
+     def perform(*args)
+       # Job logic here
+     end
+   end
+   ```
+
+2. **Queue Management**
+   - Use descriptive queue names
+   - Configure queue priorities
+   - Set appropriate retry limits
+   - Handle job failures gracefully
+
+3. **Sidekiq Configuration**
+   ```yaml
+   # config/sidekiq.yml
+   :concurrency: 5
+   :queues:
+     - [critical, 3]
+     - [default, 2]
+     - [low, 1]
+   ```
+
+4. **Job Testing**
+   ```ruby
+   # spec/jobs/my_job_spec.rb
+   RSpec.describe MyJob, type: :job do
+     it "performs the job correctly" do
+       expect { described_class.perform_later(args) }
+         .to have_enqueued_job(described_class)
+     end
+   end
+   ```
+
+## Best Practices
+
+1. **Job Design**
+   - Keep jobs focused and single-purpose
+   - Use service objects for complex logic
+   - Handle errors gracefully
+   - Add proper logging
+
+2. **Performance**
+   - Use appropriate queue priorities
+   - Configure concurrency based on server capacity
+   - Monitor job processing times
+   - Implement job batching when appropriate
+
+3. **Monitoring**
+   - Use Sidekiq Web UI for monitoring
+   - Set up alerts for failed jobs
+   - Monitor queue lengths
+   - Track job processing metrics
+
+4. **Error Handling**
+   ```ruby
+   class MyJob < ApplicationJob
+     retry_on StandardError, wait: 5.seconds, attempts: 3
+     
+     def perform(*args)
+       # Job logic
+     rescue => e
+       Rails.logger.error "Job failed: #{e.message}"
+       raise
+     end
+   end
+   ```
+
+## Common Patterns
+
+1. **Email Jobs**
+   ```ruby
+   class NotificationJob < ApplicationJob
+     queue_as :mailers
+     
+     def perform(user_id, notification_type)
+       user = User.find(user_id)
+       UserMailer.notification(user, notification_type).deliver_now
+     end
+   end
+   ```
+
+2. **Data Processing Jobs**
+   ```ruby
+   class DataProcessingJob < ApplicationJob
+     queue_as :data_processing
+     
+     def perform(data_id)
+       data = Data.find(data_id)
+       DataProcessor.new(data).process
+     end
+   end
+   ```
+
+3. **Cleanup Jobs**
+   ```ruby
+   class CleanupJob < ApplicationJob
+     queue_as :cleanup
+     
+     def perform
+       # Cleanup logic
+       Rails.logger.info "Cleanup completed"
+     end
+   end
+   ```
+
+## Configuration
+
+1. **Application Configuration**
+   ```ruby
+   # config/application.rb
+   config.active_job.queue_adapter = :sidekiq
+   ```
+
+2. **Environment Configuration**
+   ```ruby
+   # config/environments/production.rb
+   config.active_job.queue_adapter = :sidekiq
+   ```
+
+3. **Procfile.dev**
+   ```
+   web: bin/rails server -p 3000
+   worker: bundle exec sidekiq
+   ```
+
+## Testing Guidelines
+
+1. **Unit Testing**
+   - Test job logic in isolation
+   - Mock external dependencies
+   - Test error scenarios
+   - Verify job enqueuing
+
+2. **Integration Testing**
+   - Test job execution end-to-end
+   - Verify side effects
+   - Test job retry logic
+   - Monitor performance
+
+## Monitoring and Debugging
+
+1. **Sidekiq Web UI**
+   - Access via `/sidekiq` route
+   - Monitor queue status
+   - View failed jobs
+   - Check job history
+
+2. **Logging**
+   ```ruby
+   Rails.logger.info "Job started: #{job_id}"
+   Rails.logger.error "Job failed: #{error.message}"
+   ```
+
+3. **Metrics**
+   - Track job processing times
+   - Monitor queue lengths
+   - Alert on job failures
+   - Monitor memory usage
+
+## Security Considerations
+
+1. **Job Data**
+   - Don't store sensitive data in job arguments
+   - Use database IDs instead of objects
+   - Validate job parameters
+   - Implement proper authorization
+
+2. **Queue Security**
+   - Secure Sidekiq Web UI
+   - Use environment-specific configurations
+   - Monitor for suspicious job patterns
+   - Implement rate limiting
+
+## Deployment
+
+1. **Production Setup**
+   - Configure Redis for production
+   - Set up proper monitoring
+   - Configure log rotation
+   - Set up health checks
+
+2. **Scaling**
+   - Scale workers based on load
+   - Use multiple Redis instances if needed
+   - Implement job batching for efficiency
+   - Monitor resource usage
+
+Remember:
+- Always use Active Job interface
+- Configure proper queue priorities
+- Handle errors gracefully
+- Monitor job performance
+- Test job logic thoroughly

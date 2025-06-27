@@ -1,0 +1,299 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+name: caching
+description: Standards for caching strategies in Rails 7.2
+version: 1.0.0
+author: Dan
+date: 2025-06-27
+globs: 
+  - config/environments/**/*.rb
+  - app/controllers/**/*_controller.rb
+  - app/models/**/*.rb
+  - app/services/**/*_service.rb
+tags:
+  - caching
+  - redis
+  - performance
+  - rails_7_2
+---
+
+# Caching Standards for Rails 7.2
+
+## Overview
+
+This rule file establishes standards for caching strategies in Rails 7.2 using Redis cache store and Rails caching patterns. It complements the main Rails rules with specific caching practices.
+
+## Key Rules
+
+1. **Cache Store Configuration**
+   ```ruby
+   # config/environments/production.rb
+   config.cache_store = :redis_cache_store, {
+     url: ENV['REDIS_URL'],
+     connect_timeout: 30,
+     read_timeout: 0.2,
+     write_timeout: 0.2,
+     reconnect_attempts: 1
+   }
+   ```
+
+2. **Cache Keys**
+   - Use descriptive, unique cache keys
+   - Include version information
+   - Use proper namespacing
+   - Avoid cache key collisions
+
+3. **Cache Expiration**
+   - Set appropriate TTL (Time To Live)
+   - Use different expiration times for different data types
+   - Implement cache warming strategies
+   - Handle cache invalidation properly
+
+## Best Practices
+
+1. **Fragment Caching**
+   ```erb
+   <% cache @user do %>
+     <div class="user-profile">
+       <%= @user.name %>
+       <%= @user.email %>
+     </div>
+   <% end %>
+   ```
+
+2. **Russian Doll Caching**
+   ```erb
+   <% cache @post do %>
+     <article>
+       <h1><%= @post.title %></h1>
+       <% cache @post.author do %>
+         <p>By <%= @post.author.name %></p>
+       <% end %>
+     </article>
+   <% end %>
+   ```
+
+3. **Collection Caching**
+   ```erb
+   <% cache @posts do %>
+     <% @posts.each do |post| %>
+       <% cache post do %>
+         <%= render post %>
+       <% end %>
+     <% end %>
+   <% end %>
+   ```
+
+4. **Low-Level Caching**
+   ```ruby
+   # In models or services
+   def expensive_calculation
+     Rails.cache.fetch("expensive_calc_#{id}", expires_in: 1.hour) do
+       # Expensive calculation here
+     end
+   end
+   ```
+
+## Cache Patterns
+
+1. **Model Caching**
+   ```ruby
+   class User < ApplicationRecord
+     def cached_posts
+       Rails.cache.fetch("user_posts_#{id}", expires_in: 30.minutes) do
+         posts.to_a
+       end
+     end
+   end
+   ```
+
+2. **Service Object Caching**
+   ```ruby
+   class DataProcessor
+     def process_data(data_id)
+       Rails.cache.fetch("processed_data_#{data_id}", expires_in: 1.hour) do
+         # Processing logic here
+       end
+     end
+   end
+   ```
+
+3. **Controller Caching**
+   ```ruby
+   class PostsController < ApplicationController
+     def index
+       @posts = Rails.cache.fetch("posts_index_#{params[:page]}", expires_in: 15.minutes) do
+         Post.page(params[:page]).includes(:author)
+       end
+     end
+   end
+   ```
+
+## Cache Invalidation
+
+1. **Model Callbacks**
+   ```ruby
+   class Post < ApplicationRecord
+     after_commit :clear_cache
+     
+     private
+     
+     def clear_cache
+       Rails.cache.delete_matched("posts_*")
+       Rails.cache.delete_matched("user_posts_#{author_id}_*")
+     end
+   end
+   ```
+
+2. **Manual Invalidation**
+   ```ruby
+   # Clear specific cache keys
+   Rails.cache.delete("user_posts_#{user_id}")
+   
+   # Clear pattern-based keys
+   Rails.cache.delete_matched("posts_*")
+   ```
+
+3. **Version-Based Invalidation**
+   ```ruby
+   def cache_key_with_version
+     "#{cache_key}/v#{updated_at.to_i}"
+   end
+   ```
+
+## Performance Considerations
+
+1. **Cache Hit Ratio**
+   - Monitor cache hit rates
+   - Optimize cache keys for better hit ratios
+   - Use cache warming for frequently accessed data
+   - Implement cache fallbacks
+
+2. **Memory Management**
+   - Set appropriate cache sizes
+   - Monitor Redis memory usage
+   - Implement cache eviction policies
+   - Use compression for large objects
+
+3. **Network Optimization**
+   - Use connection pooling
+   - Configure timeouts appropriately
+   - Implement circuit breakers
+   - Monitor network latency
+
+## Monitoring and Debugging
+
+1. **Cache Statistics**
+   ```ruby
+   # Get cache statistics
+   Rails.cache.stats
+   
+   # Monitor cache performance
+   Rails.cache.increment("cache_hits")
+   Rails.cache.increment("cache_misses")
+   ```
+
+2. **Logging**
+   ```ruby
+   Rails.logger.info "Cache miss for key: #{cache_key}"
+   Rails.logger.info "Cache hit for key: #{cache_key}"
+   ```
+
+3. **Debugging Tools**
+   - Use Rails cache debugging
+   - Monitor Redis directly
+   - Use cache key logging
+   - Implement cache warming logs
+
+## Security Considerations
+
+1. **Cache Key Security**
+   - Don't cache sensitive data
+   - Use proper key namespacing
+   - Validate cache key inputs
+   - Implement cache key sanitization
+
+2. **Data Privacy**
+   - Be careful with user-specific data
+   - Implement proper cache isolation
+   - Use encrypted cache stores when needed
+   - Follow data retention policies
+
+## Configuration Examples
+
+1. **Development Environment**
+   ```ruby
+   # config/environments/development.rb
+   config.cache_store = :memory_store, { size: 64.megabytes }
+   ```
+
+2. **Test Environment**
+   ```ruby
+   # config/environments/test.rb
+   config.cache_store = :null_store
+   ```
+
+3. **Production Environment**
+   ```ruby
+   # config/environments/production.rb
+   config.cache_store = :redis_cache_store, {
+     url: ENV['REDIS_URL'],
+     connect_timeout: 30,
+     read_timeout: 0.2,
+     write_timeout: 0.2,
+     reconnect_attempts: 1,
+     error_handler: -> (method:, returning:, exception:) {
+       Rails.logger.error "Redis cache error: #{exception}"
+     }
+   }
+   ```
+
+## Testing
+
+1. **Cache Testing**
+   ```ruby
+   RSpec.describe "Caching" do
+     it "caches expensive calculations" do
+       expect(Rails.cache).to receive(:fetch).with("key", expires_in: 1.hour)
+       # Test logic here
+     end
+   end
+   ```
+
+2. **Cache Invalidation Testing**
+   ```ruby
+   it "invalidates cache on model update" do
+     expect(Rails.cache).to receive(:delete_matched).with("posts_*")
+     post.update(title: "New Title")
+   end
+   ```
+
+## Common Anti-Patterns
+
+1. **Cache Everything**
+   - Don't cache everything blindly
+   - Cache only expensive operations
+   - Consider cache overhead
+   - Monitor cache effectiveness
+
+2. **Cache Key Collisions**
+   - Use unique, descriptive keys
+   - Include version information
+   - Use proper namespacing
+   - Test cache key uniqueness
+
+3. **Cache Stampede**
+   - Use cache warming
+   - Implement proper expiration
+   - Use background jobs for cache updates
+   - Monitor cache patterns
+
+Remember:
+- Cache expensive operations, not everything
+- Use descriptive cache keys
+- Implement proper cache invalidation
+- Monitor cache performance
+- Test cache behavior thoroughly

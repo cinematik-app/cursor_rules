@@ -1,39 +1,32 @@
 ---
-name: tailwind_v4
 description: Standards for Tailwind CSS v4 usage in Rails 8
-version: 1.0.0
-author: Dan
-date: 2025-02-12
-globs:
-  - "app/assets/tailwind/**/*.css"
-  - "app/assets/builds/**/*.css"
-tags:
-  - tailwind
-  - css
-  - standards
+globs: 
+alwaysApply: false
 ---
 
-# Tailwind CSS v4 Standards
+# Tailwind CSS v4 Standards for Rails 7.2
 
 <rule>
 name: tailwind_v4
-description: Standards for Tailwind CSS v4 usage in Rails 8
+description: Standards for Tailwind CSS v4 usage in Rails 7.2
 filters:
   - type: file_extension
     pattern: "\\.(css|erb)$"
   - type: directory
-    pattern: "(app/assets/tailwind|app/assets/builds)"
+    pattern: "(app/assets/stylesheets|app/assets/builds|app/javascript)"
 actions:
   - type: suggest
     message: |
-      1. Directory Structure:
+      1. Directory Structure (Rails 7.2):
          ```
          app/
          ├── assets/
-         │   ├── tailwind/
+         │   ├── stylesheets/
          │   │   └── application.css    # Main Tailwind input file
          │   └── builds/
          │       └── tailwind.css       # Generated output file
+         └── javascript/
+             └── application.js         # JavaScript entry point
          ```
 
       2. Development Process:
@@ -43,7 +36,7 @@ actions:
          - Never modify the generated tailwind.css file directly
 
       3. Configuration Requirements:
-         - All Tailwind customizations go in app/assets/tailwind/application.css
+         - All Tailwind customizations go in app/assets/stylesheets/application.css
          - Use @layer components { } for component styles
          - Use @layer utilities { } for custom utilities
          - Use @apply for extracting common utility patterns
@@ -72,6 +65,21 @@ actions:
                scrollbar-width: none;
              }
            }
+           ```
+
+      4. Layout Requirements (Rails 7.2):
+         ```erb
+         <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+         <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+         ```
+
+      5. Rails 7.2 Specific Notes:
+         - Use Sprockets or importmap-rails for asset management
+         - Configure tailwindcss-rails gem properly
+         - Ensure proper asset precompilation in production
+         - Use bin/dev for development server
+</rule>
+
            ```
 
       4. Layout Requirements:
